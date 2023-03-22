@@ -1,15 +1,13 @@
 import tkinter as tk
-import tkinter.ttk
 from tkinter import *
 from tkinter import ttk
-from PIL import Image,ImageTk
+from PIL import Image, ImageTk
 import sqlite3
 import pygame
 import random
 import threading
+from pygame import mixer
 
-
-global app
 class tkinterApp(tk.Tk):
 
     # __init__ function for class tkinterApp
@@ -23,20 +21,18 @@ class tkinterApp(tk.Tk):
         container.grid_rowconfigure(0, weight=1)
         container.grid_columnconfigure(0, weight=1)
 
-
         # initializing frames to an empty array
         self.frames = {}
 
         # iterating through a tuple consisting
         # of the different page layouts
-        for F in (Login_Page, Page1, Register):
+        for F in (Login_Page, Register):
             frame = F(container, self)
 
             # initializing frame of that object from
             # login page, regestration page, game page respectively with
             # for loop
             self.frames[F] = frame
-
 
             frame.grid(row=0, column=0, sticky="nsew")
 
@@ -49,25 +45,22 @@ class tkinterApp(tk.Tk):
         frame.tkraise()
 
 
-
-
-
-
-
-
-
 class Login_Page(tk.Frame):
     def __init__(self, parent, controller):
         tk.Frame.__init__(self, parent)
 
-
-
-
         def start_game():
             # creating game
 
-
+            global user
             pygame.init()
+
+            # game background sound
+            mixer.init()
+            mixer.music.load('sound.mp3')
+            mixer.music.set_volume(5)
+            mixer.music.play(loops=-1)
+
             winHeight = 480
             winWidth = 700
             app = pygame.display.set_mode((winWidth, winHeight))
@@ -165,6 +158,7 @@ class Login_Page(tk.Frame):
 
             def end(winner=False):
                 global limbs
+
                 lostTxt = 'You Lost, press any key to play again...'
                 winTxt = 'WINNER!, press any key to play again...'
                 redraw_game_window()
@@ -179,9 +173,15 @@ class Login_Page(tk.Frame):
                 wordTxt = lost_font.render(word.upper(), 1, BLACK)
                 wordWas = lost_font.render('The phrase was: ', 1, BLACK)
 
+                # show score obtained
+                scoreis = lost_font.render(user+' Score is :', 1, BLACK)
+                point = lost_font.render(str(score), 1, BLACK)
+
                 app.blit(wordTxt, (winWidth / 2 - wordTxt.get_width() / 2, 295))
                 app.blit(wordWas, (winWidth / 2 - wordWas.get_width() / 2, 245))
                 app.blit(label, (winWidth / 2 - label.get_width() / 2, 140))
+                app.blit(scoreis, (winWidth / 2 - scoreis.get_width() / 2, 40))
+                app.blit(point, (winWidth / 2 - point.get_width() / 2, 85))
                 pygame.display.update()
                 again = True
                 while again:
@@ -220,7 +220,7 @@ class Login_Page(tk.Frame):
 
             word = randomWord()
             inPlay = True
-
+            score = 0
             while inPlay:
                 redraw_game_window()
                 pygame.time.delay(10)
@@ -239,14 +239,18 @@ class Login_Page(tk.Frame):
                             buttons[letter - 65][4] = False
                             if hang(chr(letter)):
                                 if limbs != 5:
+                                    score = score - 5
                                     limbs += 1
+                                    print(score)
                                 else:
                                     end()
                             else:
                                 print(spacedOut(word, guessed))
+                                score = score + 10
+                                print(score)
                                 if spacedOut(word, guessed).count('_') == 0:
                                     end(True)
-
+            mixer.music.stop()
             pygame.quit()
 
             # always quit pygame when done!
@@ -255,32 +259,29 @@ class Login_Page(tk.Frame):
         username = StringVar()
         password = StringVar()
 
-
-
         def check_login():
-            # to show error while logging and disapera after some time
+            # to show error while logging and disappers after some time
             def error_message():
                 label_4 = Label(app, text="User doesnot exists", width=20, font=("bold", 10))
                 label_4.place(x=180, y=280)
-                start_time = threading.Timer(6,lambda :label_4.place_forget())
+                start_time = threading.Timer(6, lambda: label_4.place_forget())
                 start_time.start()
 
-
+            global user
             user = username.get()
             pas = password.get()
-            conn = sqlite3.connect('Form.db')
+            conn = sqlite3.connect('Regestration.db')
             c = conn.cursor()
-            c.execute("SELECT * ,oid FROM Student")
+            c.execute("SELECT * FROM Player_details")
             records = c.fetchall()
             d = 0
             for i in records:
-                if i[0] == user and i[1] == pas:
+                if i[4] == user and i[5] == pas:
                     d = 1
 
-
             if d == 1:
-                #Start game page
-                root=Tk
+                # Start game page
+                root = Tk
                 img = ImageTk.PhotoImage(Image.open("new.jpg"))
                 app.geometry("605x305")
                 label = Label(self, image=img)
@@ -292,8 +293,8 @@ class Login_Page(tk.Frame):
                 error_message()
 
             conn.commit()
-            conn.close()
 
+            conn.close()
 
         # layout of login page
         label_0 = ttk.Label(self, text="Login Page", width=20, font=("bold", 20))
@@ -314,47 +315,21 @@ class Login_Page(tk.Frame):
         # button to login
         Button(self, text='Login', width=20, bg='brown', fg='white', command=check_login).place(x=180, y=200)
 
-
-
-
-
         ## button to register
         Button(self, text='Register', width=20, bg='brown', fg='white',
                command=lambda: controller.show_frame(Register)).place(x=180, y=240)
 
 
-
-
-
-
-class Page1(tk.Frame):
-
-    def __init__(self, parent, controller):
-        tk.Frame.__init__(self, parent)
-
-
-
-
-        # button to show login
-        Button(self, text='Login', width=20, bg='brown', fg='white',
-               command=lambda: controller.show_frame(Login_Page)).place(x=100, y=100)
-
-        # button for Register
-        Button(self, text='Register', width=20, bg='brown', fg='white',
-               command=lambda: controller.show_frame(Register)).place(x=130, y=200)
-
-
-
-
-
-
-
- # third window frame Regestration page
+# Second window frame Regestration page
 class Register(tk.Frame):
     def __init__(self, parent, controller):
         tk.Frame.__init__(self, parent)
 
         # data storage type
+        player_id = int()
+        first_name = StringVar()
+        last_name = StringVar()
+        contact_no = StringVar()
         username = StringVar()
         password = StringVar()
         conform_password = StringVar()
@@ -363,67 +338,68 @@ class Register(tk.Frame):
         # data storing
         def database():
             # inputs extraction
+            f_name = first_name.get()
+            l_name = last_name.get()
+            contact = contact_no.get()
             user = username.get()
             pas = password.get()
-            con_pas=conform_password.get()
-            em=email.get()
-            conn = sqlite3.connect('Form.db')
+            con_pas = conform_password.get()
+            em = email.get()
+            conn = sqlite3.connect('Regestration.db')
             with conn:
                 c = conn.cursor()
 
-
-            c.execute('CREATE TABLE IF NOT EXISTS Student (Username TEXT,Password TEXT,Email TEXT)')
-            c.execute("SELECT * ,oid FROM Student")
+            c.execute(
+                'CREATE TABLE IF NOT EXISTS Player_details (Player_id INTEGER PRIMARY KEY AUTOINCREMENT,'
+                'First_Name TEXT(20),Last_Name TEXT(20),Contact_No INT(13),Username TEXT(20),Password TEXT(10),'
+                'Email TEXT(30))')
+            c.execute("SELECT * FROM Player_details")
             records = c.fetchall()
-
-
 
             def error_message_regpage():
                 d = 0
 
                 # Serching data from sql database and logic
                 for i in records:
-                    if i[0] == user or i[2] == em :
+                    if i[4] == user or i[6] == em:
                         d = 1
-                        if i[0]==user and i[2]==em:
+                        if i[4] == user and i[6] == em:
 
-                            label_4 = Label(self, text="Username and Email Already exists", width=20, font=("bold", 10))
-                            label_4.place(x=180, y=280)
-                        elif i[0]==user :
-                            label_4 = Label(self, text=" Username Already exists", width=20, font=("bold", 10))
-                            label_4.place(x=180, y=280)
+                            label_9 = Label(self, text="Username and Email Already exists", width=20, font=("bold", 10))
+                            label_9.place(x=180, y=520)
+                        elif i[4] == user:
+                            label_9 = Label(self, text=" Username Already exists", width=20, font=("bold", 10))
+                            label_9.place(x=180, y=520)
 
-                        elif i[2]==em:
-                            label_4 = Label(self, text="Email  Already exists", width=20, font=("bold", 10))
-                            label_4.place(x=180, y=280)
-
-
-
+                        elif i[6] == em:
+                            label_9 = Label(self, text="Email  Already exists", width=20, font=("bold", 10))
+                            label_9.place(x=180, y=520)
 
                 if d != 1:
-                    if len(user)==0 or len(em)==0 or len(pas)==0 or len(con_pas)==0:
-                        label_4 = Label(self, text="Box can,t be empty", width=20, font=("bold", 10))
-                        label_4.place(x=180, y=280)
+                    if len(user) == 0 or len(em) == 0 or len(pas) == 0 or len(con_pas) == 0 or len(f_name) == 0 or len(
+                            l_name) == 0 or len(contact) == 0:
+                        label_9 = Label(self, text="Box can,t be empty", width=20, font=("bold", 10))
+                        label_9.place(x=180, y=520)
                     elif pas == con_pas:
-                        c.execute('INSERT INTO Student (Username,Password,Email) VALUES(?,?,?)', (user, pas, em))
+                        c.execute(
+                            'INSERT INTO Player_details (First_name,Last_Name,Contact_No,Email,'
+                            'Username,Password) VALUES(?,?,?,?,?,?)',
+                            (f_name, l_name, contact, em, user, pas))
+                        label_9 = Label(self, text="Success", width=20, font=("bold", 10))
+                        label_9.place(x=180, y=520)
 
 
                     elif pas != con_pas:
-                        label_4 = Label(self, text="Incorrect Password", width=20, font=("bold", 10))
-                        label_4.place(x=180, y=280)
+                        label_9 = Label(self, text="Incorrect Password", width=20, font=("bold", 10))
+                        label_9.place(x=180, y=520)
 
-                start_time = threading.Timer(6, lambda: label_4.place_forget())
+                start_time = threading.Timer(6, lambda: label_9.place_forget())
                 start_time.start()
 
-
-
-            message_store=error_message_regpage()
-
+            message_store = error_message_regpage()
 
             for i in records:
                 print(i)
-
-
 
             conn.commit()
             conn.close()
@@ -432,41 +408,53 @@ class Register(tk.Frame):
         label_0 = ttk.Label(self, text="Registration Page", width=20, font=("bold", 20))
         label_0.place(x=145, y=35)
 
-        label_2 = ttk.Label(self, text="UserName", width=20, font=("bold", 10))
-        label_2.place(x=110, y=100)
-        entry_2 = ttk.Entry(self, textvar=username)
-        entry_2.place(x=260, y=100)
+        label_1 = ttk.Label(self, text="First Name", width=20, font=("bold", 10))
+        label_1.place(x=110, y=100)
+        entry_1 = ttk.Entry(self, textvar=first_name)
+        entry_1.place(x=260, y=100)
 
-        label_5 = ttk.Label(self, text="Email", width=20, font=("bold", 10))
-        label_5.place(x=110, y=150)
-        entry_5 = ttk.Entry(self, textvar=email)
-        entry_5.place(x=260, y=150)
+        label_2 = ttk.Label(self, text="Last Name", width=20, font=("bold", 10))
+        label_2.place(x=110, y=150)
+        entry_2 = ttk.Entry(self, textvar=last_name)
+        entry_2.place(x=260, y=150)
 
-        label_3 = ttk.Label(self, text="Password", width=20, font=("bold", 10))
+        label_3 = ttk.Label(self, text="Contact No", width=20, font=("bold", 10))
         label_3.place(x=110, y=200)
-        entry_3 = ttk.Entry(self, textvar=password)
+        entry_3 = ttk.Entry(self, textvar=contact_no)
         entry_3.place(x=260, y=200)
 
-        label_4 = ttk.Label(self, text="Conform Password", width=20, font=("bold", 10))
+        label_4 = ttk.Label(self, text="Email", width=20, font=("bold", 10))
         label_4.place(x=110, y=250)
-        entry_4 = ttk.Entry(self, textvar=conform_password)
+        entry_4 = ttk.Entry(self, textvar=email)
         entry_4.place(x=260, y=250)
 
+        label_5 = ttk.Label(self, text="UserName", width=20, font=("bold", 10))
+        label_5.place(x=110, y=300)
+        entry_5 = ttk.Entry(self, textvar=username)
+        entry_5.place(x=260, y=300)
 
+        label_6 = ttk.Label(self, text="Password", width=20, font=("bold", 10))
+        label_6.place(x=110, y=350)
+        entry_6 = ttk.Entry(self, textvar=password)
+        entry_6.place(x=260, y=350)
+
+        label_7 = ttk.Label(self, text="Conform Password", width=20, font=("bold", 10))
+        label_7.place(x=110, y=400)
+        entry_7 = ttk.Entry(self, textvar=conform_password)
+        entry_7.place(x=260, y=400)
 
         # button for submit in reg page
-        Button(self, text='Submit', width=20, bg='brown', fg='white', command=database).place(x=180, y=300)
-
+        Button(self, text='Submit', width=20, bg='brown', fg='white', command=database).place(x=180, y=450)
 
         # button for login in reg page
         Button(self, text='Login', width=20, bg='brown', fg='white',
-               command=lambda: controller.show_frame(Login_Page)).place(x=180, y=350)
+               command=lambda: controller.show_frame(Login_Page)).place(x=180, y=490)
 
 
-
-app=tkinterApp()
+app = tkinterApp()
 app.iconbitmap('hangman6.ico')
 
 app.geometry("500x550")
+app.title("Hangman Game")
 
 app.mainloop()
