@@ -4,5 +4,5 @@ To run this game you need following python libraries:
 2) PIL
 3) sqlite3
 4) pygame
-5) reandom
+5) random
 6) threading
